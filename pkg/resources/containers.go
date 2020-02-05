@@ -60,7 +60,7 @@ var controllerContainer = corev1.Container{
 	Name:            CertManagerControllerName,
 	Image:           controllerImage,
 	ImagePullPolicy: pullPolicy,
-	Args:            []string{resourceNS, leaderElectNS, acmeSolver, webhookNS, webhookCASecret, webhookServingSecretArg, webhookDNSNames},
+	Args:            []string{resourceNS, leaderElectNS, acmeSolverArg, webhookNSArg, webhookCASecretArg, webhookServingSecretArg, webhookDNSNamesArg},
 	Env: []corev1.EnvVar{
 		{
 			Name: "POD_NAMESPACE",
@@ -161,6 +161,29 @@ var cainjectorContainer = corev1.Container{
 	ReadinessProbe: &corev1.Probe{
 		Handler: corev1.Handler{
 			Exec: &readinessExecActionCainjector,
+		},
+		InitialDelaySeconds: initialDelaySecondsReadiness,
+		TimeoutSeconds:      timeoutSecondsReadiness,
+	},
+	SecurityContext: containerSecurityGeneral,
+	Resources:       cpuMemory,
+}
+
+var configmapWatcherContainer = corev1.Container{
+	Name:            "configmap-watcher",
+	Image:           configmapWatcherImage, //change
+	ImagePullPolicy: pullPolicy,
+	Args:            []string{"--v=0"},
+	LivenessProbe: &corev1.Probe{
+		Handler: corev1.Handler{
+			Exec: &livenessExecActionConfigmapWatcher,
+		},
+		InitialDelaySeconds: initialDelaySecondsLiveness,
+		TimeoutSeconds:      timeoutSecondsLiveness,
+	},
+	ReadinessProbe: &corev1.Probe{
+		Handler: corev1.Handler{
+			Exec: &readinessExecActionConfigmapWatcher,
 		},
 		InitialDelaySeconds: initialDelaySecondsReadiness,
 		TimeoutSeconds:      timeoutSecondsReadiness,

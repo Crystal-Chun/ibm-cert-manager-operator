@@ -48,6 +48,10 @@ func webhookDeploy(instance *operatorv1alpha1.CertManager, client client.Client,
 	return deployLogic(instance, client, kubeclient, scheme, res.WebhookDeployment, res.CertManagerWebhookName, res.WebhookImageName, res.WebhookLabels)
 }
 
+func configmapWatcherDeploy(instance *operatorv1alpha1.CertManager, client client.Client, kubeclient kubernetes.Interface, scheme *runtime.Scheme) error {
+	return deployLogic(instance, client, kubeclient, scheme, res.ConfigmapWatcherDeployment, res.ConfigmapWatcherName, res.ConfigmapWatcherImageName, res.ConfigmapWatcherLabels)
+}
+
 func deployLogic(instance *operatorv1alpha1.CertManager, client client.Client, kubeclient kubernetes.Interface, scheme *runtime.Scheme, deployTemplate *appsv1.Deployment, name, imageName, labels string) error {
 	similarDeploys := deployFinder(kubeclient, labels, imageName)
 	deployment := setupDeploy(instance, deployTemplate)
@@ -192,6 +196,11 @@ func deployFinder(client kubernetes.Interface, labels, name string) []appsv1.Dep
 	return allDeploys
 }
 
+// Deep comparision between the two deployments passed in
+// Checks labels, replicas, pod template labels, pull secrets, service account names,
+// volumes, liveness, readiness, image name, args, env, and security contexts (pod & container)
+// of both deployments. If there are any discrepencies between them, this returns false. Returns
+// true otherwise
 func equalDeploys(first, second appsv1.Deployment) bool {
 	statusLog := log.V(1)
 	if !reflect.DeepEqual(first.ObjectMeta.Labels, second.ObjectMeta.Labels) {

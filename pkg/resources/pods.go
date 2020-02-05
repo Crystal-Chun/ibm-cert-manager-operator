@@ -68,3 +68,14 @@ var certManagerCainjectorPod = corev1.PodSpec{
 		cainjectorContainer,
 	},
 }
+
+var configmapWatcherPod = corev1.PodSpec{
+	ImagePullSecrets: []corev1.LocalObjectReference{{
+		Name: ImagePullSecret,
+	}},
+	ServiceAccountName: ServiceAccount,
+	SecurityContext:    podSecurity,
+	Containers: []corev1.Container{
+		configmapWatcherContainer,
+	},
+}
