@@ -55,11 +55,15 @@ var WebhookDeployment = &appsv1.Deployment{
 	Spec: appsv1.DeploymentSpec{
 		Replicas: &replicaCount,
 		Selector: &metav1.LabelSelector{
-			MatchLabels: WebhookLabelMap,
+			MatchLabels: map[string]string{
+				"app": "ibm-cert-manager-webhook",
+			},
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Labels:      WebhookLabelMap,
+				Labels: map[string]string{
+					"app": "ibm-cert-manager-webhook",
+				},
 				Annotations: securityAnnotation,
 			},
 			Spec: certManagerWebhookPod,
@@ -92,7 +96,7 @@ var CainjectorDeployment = &appsv1.Deployment{
 // ConfigmapWatcherDeployment is the deployment spec for the configmap watcher
 var ConfigmapWatcherDeployment = &appsv1.Deployment{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "configmap-watcher",
+		Name:      ConfigmapWatcherName,
 		Namespace: DeployNamespace,
 		Labels:    ConfigmapWatcherLabelMap,
 	},

@@ -93,7 +93,6 @@ var controllerContainer = corev1.Container{
 	Resources:       cpuMemory,
 }
 
-// TODO: missing volume/volume mounts
 var webhookContainer = corev1.Container{
 	Name:            CertManagerWebhookName,
 	Image:           webhookImage,

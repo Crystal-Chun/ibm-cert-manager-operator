@@ -122,8 +122,14 @@ const ConfigmapWatcherName = "configmap-watcher"
 // Default Image Values
 const imageRegistry = "quay.io"
 
-// ImageVersion is the image version used for the cert-manager services
-const ImageVersion = "0.10.0"
+// ControllerImageVersion is the image version used for the cert-manager-controller
+const ControllerImageVersion = "0.10.0"
+
+// WebhookImageVersion is the image version used for the cert-manager-webhook
+const WebhookImageVersion = "0.10.1"
+
+// ConfigmapWatcherVersion is the image version used for the configmap-watcher
+const ConfigmapWatcherVersion = "3.3.0"
 
 // ControllerImageName is the image name of the cert-manager-controller
 const ControllerImageName = "icp-cert-manager-controller"
@@ -138,13 +144,13 @@ const CainjectorImageName = "icp-cert-manager-cainjector"
 const WebhookImageName = "icp-cert-manager-webhook"
 
 // ConfigmapWatcherImageName is the name of the configmap watcher image
-const ConfigmapWatcherImageName = "configmap-watcher"
+const ConfigmapWatcherImageName = "icp-configmap-watcher"
 
-const controllerImage = imageRegistry + "/" + ControllerImageName + ":" + ImageVersion
-const acmesolverImage = imageRegistry + "/" + AcmesolverImageName + ":" + ImageVersion
-const cainjectorImage = imageRegistry + "/" + CainjectorImageName + ":" + ImageVersion
-const webhookImage = imageRegistry + "/" + WebhookImageName + ":" + ImageVersion
-const configmapWatcherImage = imageRegistry + "/" + ConfigmapWatcherImageName + ":3.5.0"
+const controllerImage = imageRegistry + "/" + ControllerImageName + ":" + ControllerImageVersion
+const acmesolverImage = imageRegistry + "/" + AcmesolverImageName + ":" + ControllerImageVersion
+const cainjectorImage = imageRegistry + "/" + CainjectorImageName + ":" + ControllerImageVersion
+const webhookImage = imageRegistry + "/" + WebhookImageName + ":" + WebhookImageVersion
+const configmapWatcherImage = imageRegistry + "/" + ConfigmapWatcherImageName + ":" + ConfigmapWatcherVersion
 
 // ImagePullSecret is the default image pull secret name
 const ImagePullSecret = "image-pull-secret"

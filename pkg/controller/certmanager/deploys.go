@@ -113,26 +113,27 @@ func setupDeploy(instance *operatorv1alpha1.CertManager, deploy *appsv1.Deployme
 		}}
 	}
 
-	tag := res.ImageVersion
-	if instance.Spec.ImagePostFix != "" {
-		tag += instance.Spec.ImagePostFix
-	}
-
 	if instance.Spec.ImageRegistry != "" { // Set the image registry to the one specified
 		// Assume image registry doesn't have forward slash at the end
 		switch deploy.Name {
 		case res.CertManagerControllerName:
-			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.ControllerImageName + ":" + tag
-			var acmeSolver = "--acme-http01-solver-image=" + instance.Spec.ImageRegistry + "/" + res.AcmesolverImageName + ":" + tag
+			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.ControllerImageName + ":" + res.ControllerImageVersion
+			var acmeSolver = "--acme-http01-solver-image=" + instance.Spec.ImageRegistry + "/" + res.AcmesolverImageName + ":" + res.ControllerImageVersion
 			returningDeploy.Spec.Template.Spec.Containers[0].Args = append(res.DefaultArgs, acmeSolver)
 			log.V(3).Info("The args", "args", deploy.Spec.Template.Spec.Containers[0].Args)
 		case res.CertManagerCainjectorName:
-			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.CainjectorImageName + ":" + tag
+			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.CainjectorImageName + ":" + res.ControllerImageVersion
 		case res.CertManagerWebhookName:
-			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.WebhookImageName + ":" + tag
+			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.WebhookImageName + ":" + res.WebhookImageVersion
 			returningDeploy.Spec.Template.Spec.Containers[0].SecurityContext.ReadOnlyRootFilesystem = &res.FalseVar
+		case res.ConfigmapWatcherName:
+			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.ConfigmapWatcherImageName + ":" + res.ConfigmapWatcherVersion
 		}
 	}
+	if instance.Spec.ImagePostFix != "" {
+		returningDeploy.Spec.Template.Spec.Containers[0].Image += instance.Spec.ImagePostFix
+	}
+
 	log.V(2).Info("Resulting image registry", "full name", returningDeploy.Spec.Template.Spec.Containers[0].Image)
 	log.V(3).Info("Resulting deployment to be created", "spec", fmt.Sprintf("%v", returningDeploy))
 	return returningDeploy
@@ -155,7 +156,7 @@ func deployFinder(client kubernetes.Interface, labels, name string) []appsv1.Dep
 	deployList, err := client.AppsV1().Deployments("").List(listOpt)
 	// Find deployment by its labels
 	if err != nil {
-		log.Info("error", "Error retrieving deployments", err)
+		log.Error(err, "Error retrieving deployments by label")
 	} else {
 		for _, deploy := range deployList.Items { // These will need to be removed
 			log.V(3).Info("Found deployment by labels",
@@ -174,7 +175,7 @@ func deployFinder(client kubernetes.Interface, labels, name string) []appsv1.Dep
 	deployList, err = client.AppsV1().Deployments("").List(listOpt)
 	// Check all the deployments in namespace to see if cert-manager is already installed as a different name
 	if err != nil {
-		log.Info("error", "Error retrieving deployments", err)
+		log.Error(err, "Error retrieving deployments")
 	} else {
 		for _, deploy := range deployList.Items { // These will need to be removed
 			if strings.Contains(deploy.Spec.Template.Spec.Containers[0].Image, name) { // Deploys the same image
