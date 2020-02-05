@@ -30,8 +30,15 @@ type CertManagerSpec struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	ImageRegistry string          `json:"imageRegistry,omitempty"`
 	ImagePostFix  string          `json:"imagePostFix,omitempty"`
+	LogLevels     LogLevels       `json:"logLevels,omitempty"`
 	PullSecret    ImagePullSecret `json:"pullSecret,omitempty"`
 	Webhook       bool            `json:"enableWebhook,omitempty"`
+}
+
+type LogLevels struct {
+	Controller       string `json:"controller,omitempty"`
+	Webhook          string `json:"webhook,omitempty"`
+	ConfigmapWatcher string `json:"configmapWatcher,omitempty"`
 }
 
 type ImagePullSecret struct {

@@ -123,7 +123,7 @@ const ConfigmapWatcherName = "configmap-watcher"
 const imageRegistry = "quay.io"
 
 // ControllerImageVersion is the image version used for the cert-manager-controller
-const ControllerImageVersion = "0.10.0"
+const ControllerImageVersion = "0.10.1"
 
 // WebhookImageVersion is the image version used for the cert-manager-webhook
 const WebhookImageVersion = "0.10.1"
@@ -208,8 +208,22 @@ const webhookCASecretArg = "--webhook-ca-secret=cert-manager-webhook-ca"
 const webhookServingSecretArg = "--webhook-serving-secret=" + webhookServingSecret
 const webhookDNSNamesArg = "--webhook-dns-names=cert-manager-webhook,cert-manager-webhook.cert-manager,cert-manager-webhook.cert-manager.svc"
 
-// DefaultArgs are the default arguments use for cert-manager-controller
+// DefaultArgs are the default arguments used for cert-manager-controller
 var DefaultArgs = []string{resourceNS, leaderElectNS, webhookNSArg, webhookCASecretArg, webhookServingSecretArg, webhookDNSNamesArg}
+
+// Webhook arguments
+const defaultLogLevel = "0"
+const webhookPort = "1443"
+const certFile = "/certs/tls.crt"
+const keyFile = "/certs/tls.key"
+
+const webhookLogLevelArg = "--v=" + defaultLogLevel
+const securePortArg = "--secure-port=" + webhookPort
+const certFileArg = "--tls-cert-file=" + certFile
+const privateKeyFileArg = "--tls-private-key-file=" + keyFile
+
+// DefaultArgsWebhook are the default arguments used for cert-manager-webhook
+var DefaultArgsWebhook = []string{securePortArg, certFileArg, privateKeyFileArg}
 
 // CRDs is the list of crds created/used by cert-manager in this version
 var CRDs = [5]string{"certificates", "issuers", "clusterissuers", "orders", "challenges"}

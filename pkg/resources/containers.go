@@ -97,7 +97,7 @@ var webhookContainer = corev1.Container{
 	Name:            CertManagerWebhookName,
 	Image:           webhookImage,
 	ImagePullPolicy: pullPolicy,
-	Args:            []string{"--v=0", "--secure-port=1443", "--tls-cert-file=/certs/tls.crt", "--tls-private-key-file=/certs/tls.key"},
+	Args:            DefaultArgsWebhook,
 	Env: []corev1.EnvVar{
 		{
 			Name: "POD_NAMESPACE",

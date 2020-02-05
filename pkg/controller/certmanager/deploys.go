@@ -119,15 +119,24 @@ func setupDeploy(instance *operatorv1alpha1.CertManager, deploy *appsv1.Deployme
 		case res.CertManagerControllerName:
 			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.ControllerImageName + ":" + res.ControllerImageVersion
 			var acmeSolver = "--acme-http01-solver-image=" + instance.Spec.ImageRegistry + "/" + res.AcmesolverImageName + ":" + res.ControllerImageVersion
-			returningDeploy.Spec.Template.Spec.Containers[0].Args = append(res.DefaultArgs, acmeSolver)
+			returningDeploy.Spec.Template.Spec.Containers[0].Args = append(returningDeploy.Spec.Template.Spec.Containers[0].Args, acmeSolver)
 			log.V(3).Info("The args", "args", deploy.Spec.Template.Spec.Containers[0].Args)
 		case res.CertManagerCainjectorName:
 			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.CainjectorImageName + ":" + res.ControllerImageVersion
 		case res.CertManagerWebhookName:
 			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.WebhookImageName + ":" + res.WebhookImageVersion
 			returningDeploy.Spec.Template.Spec.Containers[0].SecurityContext.ReadOnlyRootFilesystem = &res.FalseVar
+
+			if instance.Spec.LogLevels.Webhook != "" {
+				var logLevel = "--v=" + instance.Spec.LogLevels.Webhook
+				returningDeploy.Spec.Template.Spec.Containers[0].Args = append(returningDeploy.Spec.Template.Spec.Containers[0].Args, logLevel)
+			}
 		case res.ConfigmapWatcherName:
 			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.ConfigmapWatcherImageName + ":" + res.ConfigmapWatcherVersion
+			if instance.Spec.LogLevels.ConfigmapWatcher != "" {
+				var logLevel = "--v=" + instance.Spec.LogLevels.ConfigmapWatcher
+				returningDeploy.Spec.Template.Spec.Containers[0].Args = []string{logLevel}
+			}
 		}
 	}
 	if instance.Spec.ImagePostFix != "" {
