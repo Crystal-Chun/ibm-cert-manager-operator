@@ -71,15 +71,6 @@ var CainjectorLabelMap = map[string]string{
 	"release":                      certManagerComponentName,
 }
 
-// ConfigmapWatcherLabelMap is the labels for the configmap watcher in map format
-var ConfigmapWatcherLabelMap = map[string]string{
-	"app.kubernetes.io/name":       ConfigmapWatcherName,
-	"app.kubernetes.io/component":  certManagerComponentName,
-	"app.kubernetes.io/managed-by": "operator",
-	"app.kubernetes.io/instance":   ConfigmapWatcherName,
-	"release":                      certManagerComponentName,
-}
-
 var securityAnnotation = map[string]string{
 	"seccomp.security.alpha.kubernetes.io/pod": "docker/default",
 }
@@ -97,9 +88,6 @@ const WebhookLabels = "app=ibm-cert-manager-webhook"
 // CainjectorLabels is a string of the cert-manager-cainjector's labels
 const CainjectorLabels = "app=ibm-cert-manager-cainjector"
 
-// ConfigmapWatcherLabels is a string of the configmap-watcher's labels
-const ConfigmapWatcherLabels = "app.kubernetes.io/name=configmap-watcher"
-
 // DeployNamespace is the namespace the cert-manager services will be deployed in
 const DeployNamespace = "cert-manager"
 const pullPolicy = v1.PullIfNotPresent
@@ -116,9 +104,6 @@ const CertManagerCainjectorName = "cert-manager-cainjector"
 // CertManagerWebhookName is the name of the container/pod/deployment for cert-manager-webhook
 const CertManagerWebhookName = "cert-manager-webhook"
 
-// ConfigmapWatcherName is the name of the container/pod/deployment for the configmap-watcher
-const ConfigmapWatcherName = "configmap-watcher"
-
 // Default Image Values
 const imageRegistry = "quay.io"
 
@@ -127,9 +112,6 @@ const ControllerImageVersion = "0.10.0"
 
 // WebhookImageVersion is the image version used for the cert-manager-webhook
 const WebhookImageVersion = "0.10.1"
-
-// ConfigmapWatcherVersion is the image version used for the configmap-watcher
-const ConfigmapWatcherVersion = "3.3.0"
 
 // ControllerImageName is the image name of the cert-manager-controller
 const ControllerImageName = "icp-cert-manager-controller"
@@ -143,14 +125,10 @@ const CainjectorImageName = "icp-cert-manager-cainjector"
 // WebhookImageName is the image name of the cert-manager-webhook
 const WebhookImageName = "icp-cert-manager-webhook"
 
-// ConfigmapWatcherImageName is the name of the configmap watcher image
-const ConfigmapWatcherImageName = "icp-configmap-watcher"
-
 const controllerImage = imageRegistry + "/" + ControllerImageName + ":" + ControllerImageVersion
 const acmesolverImage = imageRegistry + "/" + AcmesolverImageName + ":" + ControllerImageVersion
 const cainjectorImage = imageRegistry + "/" + CainjectorImageName + ":" + ControllerImageVersion
 const webhookImage = imageRegistry + "/" + WebhookImageName + ":" + WebhookImageVersion
-const configmapWatcherImage = imageRegistry + "/" + ConfigmapWatcherImageName + ":" + ConfigmapWatcherVersion
 
 // ImagePullSecret is the default image pull secret name
 const ImagePullSecret = "image-pull-secret"
@@ -178,9 +156,6 @@ var livenessExecActionCainjector = v1.ExecAction{
 var livenessExecActionWebhook = v1.ExecAction{
 	Command: []string{"sh", "-c", "pgrep webhook -l"},
 }
-var livenessExecActionConfigmapWatcher = v1.ExecAction{
-	Command: []string{"sh", "-c", "pgrep watcher -l"},
-}
 
 var initialDelaySecondsReadiness int32 = 10
 var timeoutSecondsReadiness int32 = 2
@@ -192,9 +167,6 @@ var readinessExecActionCainjector = v1.ExecAction{
 }
 var readinessExecActionWebhook = v1.ExecAction{
 	Command: []string{"sh", "-c", "exec echo start cert-manager webhook"},
-}
-var readinessExecActionConfigmapWatcher = v1.ExecAction{
-	Command: []string{"sh", "-c", "exec echo start configmap-watcher"},
 }
 
 // Cert-manager args

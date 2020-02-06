@@ -167,26 +167,3 @@ var cainjectorContainer = corev1.Container{
 	SecurityContext: containerSecurityGeneral,
 	Resources:       cpuMemory,
 }
-
-var configmapWatcherContainer = corev1.Container{
-	Name:            "configmap-watcher",
-	Image:           configmapWatcherImage, //change
-	ImagePullPolicy: pullPolicy,
-	Args:            []string{"--v=0"},
-	LivenessProbe: &corev1.Probe{
-		Handler: corev1.Handler{
-			Exec: &livenessExecActionConfigmapWatcher,
-		},
-		InitialDelaySeconds: initialDelaySecondsLiveness,
-		TimeoutSeconds:      timeoutSecondsLiveness,
-	},
-	ReadinessProbe: &corev1.Probe{
-		Handler: corev1.Handler{
-			Exec: &readinessExecActionConfigmapWatcher,
-		},
-		InitialDelaySeconds: initialDelaySecondsReadiness,
-		TimeoutSeconds:      timeoutSecondsReadiness,
-	},
-	SecurityContext: containerSecurityGeneral,
-	Resources:       cpuMemory,
-}

@@ -48,10 +48,6 @@ func webhookDeploy(instance *operatorv1alpha1.CertManager, client client.Client,
 	return deployLogic(instance, client, kubeclient, scheme, res.WebhookDeployment, res.CertManagerWebhookName, res.WebhookImageName, res.WebhookLabels)
 }
 
-func configmapWatcherDeploy(instance *operatorv1alpha1.CertManager, client client.Client, kubeclient kubernetes.Interface, scheme *runtime.Scheme) error {
-	return deployLogic(instance, client, kubeclient, scheme, res.ConfigmapWatcherDeployment, res.ConfigmapWatcherName, res.ConfigmapWatcherImageName, res.ConfigmapWatcherLabels)
-}
-
 func deployLogic(instance *operatorv1alpha1.CertManager, client client.Client, kubeclient kubernetes.Interface, scheme *runtime.Scheme, deployTemplate *appsv1.Deployment, name, imageName, labels string) error {
 	similarDeploys := deployFinder(kubeclient, labels, imageName)
 	deployment := setupDeploy(instance, deployTemplate)
@@ -126,9 +122,6 @@ func setupDeploy(instance *operatorv1alpha1.CertManager, deploy *appsv1.Deployme
 		case res.CertManagerWebhookName:
 			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.WebhookImageName + ":" + res.WebhookImageVersion
 			returningDeploy.Spec.Template.Spec.Containers[0].SecurityContext.ReadOnlyRootFilesystem = &res.FalseVar
-		case res.ConfigmapWatcherName:
-			returningDeploy.Spec.Template.Spec.Containers[0].Image = instance.Spec.ImageRegistry + "/" + res.ConfigmapWatcherImageName + ":" + res.ConfigmapWatcherVersion
-		}
 	}
 	if instance.Spec.ImagePostFix != "" {
 		returningDeploy.Spec.Template.Spec.Containers[0].Image += instance.Spec.ImagePostFix
