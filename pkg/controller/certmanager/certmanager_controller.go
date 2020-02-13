@@ -22,6 +22,7 @@ import (
 	operatorv1alpha1 "github.com/ibm/ibm-cert-manager-operator/pkg/apis/operator/v1alpha1"
 	res "github.com/ibm/ibm-cert-manager-operator/pkg/resources"
 
+	certmgr "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	admRegv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ import (
 	apiextensionsAPIv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
@@ -227,6 +229,45 @@ func (r *ReconcileCertManager) Reconcile(request reconcile.Request) (reconcile.R
 
 		}
 		return reconcile.Result{}, err
+	}
+
+	log.Info("Creating cert manager issuer")
+	issuer := &certmgr.Issuer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-issuer",
+			Namespace: res.DeployNamespace,
+		},
+		Spec: certmgr.IssuerSpec{
+			IssuerConfig: certmgr.IssuerConfig{
+				CA: &certmgr.CAIssuer{
+					SecretName: "my-ca-secret",
+				},
+			},
+		},
+	}
+
+	if err := r.client.Create(context.TODO(), issuer); err != nil {
+		log.Error(err, "Error creating cert-manager issuer")
+	}
+
+	log.Info("Creating cert manager certificate")
+	crt := &certmgr.Certificate{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test",
+			Namespace: res.DeployNamespace,
+		},
+		Spec: certmgr.CertificateSpec{
+			SecretName: "test-secret",
+			IssuerRef: certmgr.ObjectReference{
+				Name: "icp-ca-issuer",
+				Kind: "ClusterIssuer",
+			},
+			CommonName: "test",
+		},
+	}
+
+	if err := r.client.Create(context.TODO(), crt); err != nil {
+		log.Error(err, "Error creating cert-manager certificate")
 	}
 
 	// Check Prerequisites
