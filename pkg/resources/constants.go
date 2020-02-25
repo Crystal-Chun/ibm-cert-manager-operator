@@ -205,7 +205,10 @@ const webhookServingSecretArg = "--webhook-serving-secret=" + webhookServingSecr
 const webhookDNSNamesArg = "--webhook-dns-names=cert-manager-webhook,cert-manager-webhook.cert-manager,cert-manager-webhook.cert-manager.svc"
 
 // DefaultArgs are the default arguments use for cert-manager-controller
-var DefaultArgs = []string{resourceNS, leaderElectNS, webhookNSArg, webhookCASecretArg, webhookServingSecretArg, webhookDNSNamesArg}
+var DefaultArgs = map[string]string{"resourceNS": resourceNS, "leaderElect": leaderElectNS, "webhookNS": webhookNSArg, "webhookCASecret": webhookCASecretArg, "webhookServingSecret": webhookServingSecretArg, "webhookDNSNames": webhookDNSNamesArg}
+
+// DefaultArgs are the default arguments use for cert-manager-controller
+// var DefaultArgs = []string{resourceNS, leaderElectNS, webhookNSArg, webhookCASecretArg, webhookServingSecretArg, webhookDNSNamesArg}
 
 // CRDs is the list of crds created/used by cert-manager in this version
 var CRDs = [5]string{"certificates", "issuers", "clusterissuers", "orders", "challenges"}
