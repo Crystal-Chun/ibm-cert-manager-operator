@@ -22,10 +22,12 @@ import (
 	operatorv1alpha1 "github.com/ibm/ibm-cert-manager-operator/pkg/apis/operator/v1alpha1"
 
 	certmgr "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -51,7 +53,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileCertManagerSharedCA{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileCertManagerSharedCA{client: mgr.GetClient(), scheme: mgr.GetScheme(), recorder: mgr.GetEventRecorderFor("ibm-cert-manager-operator")}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -104,8 +106,9 @@ var _ reconcile.Reconciler = &ReconcileCertManagerSharedCA{}
 type ReconcileCertManagerSharedCA struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client   client.Client
+	scheme   *runtime.Scheme
+	recorder record.EventRecorder
 }
 
 // Reconcile reads that state of the cluster for a CertManagerSharedCA object and makes changes based on the state read
@@ -142,11 +145,13 @@ func (r *ReconcileCertManagerSharedCA) Reconcile(request reconcile.Request) (rec
 		ssIssuer := newIssuer(ssIssuerName, ns)
 		// Set CertManagerSharedCA instance as the owner and controller
 		if err := controllerutil.SetControllerReference(instance, ssIssuer, r.scheme); err != nil {
+			r.updateStatus(instance, "Can't set controller reference on self signed issuer", corev1.EventTypeWarning, "Error")
 			return reconcile.Result{}, err
 		}
 		err = r.client.Create(context.TODO(), ssIssuer)
 		if err != nil {
 			log.Error(err, "Error creating self signed issuer, requeueing")
+			r.updateStatus(instance, "Error creating self signed Issuer", corev1.EventTypeWarning, "Error")
 			return reconcile.Result{}, err
 		}
 	} else if err != nil {
@@ -163,11 +168,13 @@ func (r *ReconcileCertManagerSharedCA) Reconcile(request reconcile.Request) (rec
 		caCertificate := newCert(caCertName, ns, caSecretName, ssIssuerName, "Issuer")
 		// Set CertManagerSharedCA instance as the owner and controller
 		if err := controllerutil.SetControllerReference(instance, caCertificate, r.scheme); err != nil {
+			r.updateStatus(instance, "Can't set controller reference on certificate", corev1.EventTypeWarning, "Error")
 			return reconcile.Result{}, err
 		}
 		err = r.client.Create(context.TODO(), caCertificate)
 		if err != nil {
 			log.Error(err, "Error creating CA Certificate, requeueing")
+			r.updateStatus(instance, "Error creating CA Certificate", corev1.EventTypeWarning, "Error")
 			return reconcile.Result{}, err
 		}
 	} else if err != nil {
@@ -187,20 +194,22 @@ func (r *ReconcileCertManagerSharedCA) Reconcile(request reconcile.Request) (rec
 		clusterIssuer := newClusterIssuer(caClusterIssuerName, caSecretName)
 		// Set CertManagerSharedCA instance as the owner and controller
 		if err := controllerutil.SetControllerReference(instance, clusterIssuer, r.scheme); err != nil {
+			r.updateStatus(instance, "Can't set controller reference on ca clusterissuer", corev1.EventTypeWarning, "Error")
 			return reconcile.Result{}, err
 		}
 		err = r.client.Create(context.TODO(), clusterIssuer)
 		if err != nil {
 			log.Error(err, "Error creating CA ClusterIssuer, requeueing")
-
+			r.updateStatus(instance, "Error creating CA ClusterIssuer", corev1.EventTypeWarning, "Error")
 			return reconcile.Result{}, err
 		}
 
 	} else if err != nil {
 		log.Error(err, "Error accessing CA ClusterIssuer, requeueing")
-
 		return reconcile.Result{}, err
 	}
+
+	r.updateStatus(instance, "Successfully created self signed issuer, CA certificate, and CA clusterissuer", corev1.EventTypeNormal, "Success")
 	return reconcile.Result{}, nil
 }
 
@@ -249,4 +258,8 @@ func newClusterIssuer(name, secret string) *certmgr.ClusterIssuer {
 			},
 		},
 	}
+}
+
+func (r *ReconcileCertManagerSharedCA) updateStatus(instance *operatorv1alpha1.CertManagerSharedCA, message, event, reason string) {
+	r.recorder.Event(instance, event, reason, message)
 }
