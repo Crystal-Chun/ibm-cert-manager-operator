@@ -1,0 +1,6 @@
+apiVersion: operator.ibm.com/v1alpha1
+kind: CertManagerSharedCA
+metadata:
+  name: example-certmanagersharedca
+spec:
+  commonNamespace: "ibm-common-services"
