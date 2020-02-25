@@ -22,7 +22,6 @@ import (
 	operatorv1alpha1 "github.com/ibm/ibm-cert-manager-operator/pkg/apis/operator/v1alpha1"
 
 	certmgr "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -134,14 +133,6 @@ func (r *ReconcileCertManagerSharedCA) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set CertManagerSharedCA instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
 	var ns = instance.Spec.Namespace
 	var ssIssuerName = "cs-ss-issuer"
 	ssIssuer := &certmgr.Issuer{}
@@ -149,6 +140,10 @@ func (r *ReconcileCertManagerSharedCA) Reconcile(request reconcile.Request) (rec
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating a new self signed Issuer", "Name", ssIssuerName, "Namespace", ns)
 		ssIssuer := newIssuer(ssIssuerName, ns)
+		// Set CertManagerSharedCA instance as the owner and controller
+		if err := controllerutil.SetControllerReference(instance, ssIssuer, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
 		err = r.client.Create(context.TODO(), ssIssuer)
 		if err != nil {
 			log.Error(err, "Error creating self signed issuer, requeueing")
@@ -165,14 +160,18 @@ func (r *ReconcileCertManagerSharedCA) Reconcile(request reconcile.Request) (rec
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: caCertName, Namespace: ns}, caCert)
 	if err != nil && errors.IsNotFound(err) {
 		reqLogger.Info("Creating a new CA Certificate", "Name", caCertName, "Namespace", ns)
-		caCertificate := newCert(ssIssuerName, ns)
-		err = r.client.Create(context.TODO(), ssIssuer)
+		caCertificate := newCert(caCertName, ns, caSecretName, ssIssuerName, "Issuer")
+		// Set CertManagerSharedCA instance as the owner and controller
+		if err := controllerutil.SetControllerReference(instance, caCertificate, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+		err = r.client.Create(context.TODO(), caCertificate)
 		if err != nil {
-			log.Error(err, "Error creating self signed issuer, requeueing")
+			log.Error(err, "Error creating CA Certificate, requeueing")
 			return reconcile.Result{}, err
 		}
 	} else if err != nil {
-		log.Error(err, "Error accessing self signed issuer, requeueing")
+		log.Error(err, "Error accessing CA Certificate, requeueing")
 		return reconcile.Result{}, err
 	}
 
@@ -184,20 +183,24 @@ func (r *ReconcileCertManagerSharedCA) Reconcile(request reconcile.Request) (rec
 	found := &certmgr.ClusterIssuer{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: caClusterIssuerName, Namespace: ""}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		reqLogger.Info("Creating a new ClusterIssuer", "Pod.Namespace", caClusterIssuerName)
+		clusterIssuer := newClusterIssuer(caClusterIssuerName, caSecretName)
+		// Set CertManagerSharedCA instance as the owner and controller
+		if err := controllerutil.SetControllerReference(instance, clusterIssuer, r.scheme); err != nil {
+			return reconcile.Result{}, err
+		}
+		err = r.client.Create(context.TODO(), clusterIssuer)
 		if err != nil {
+			log.Error(err, "Error creating CA ClusterIssuer, requeueing")
+
 			return reconcile.Result{}, err
 		}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
 	} else if err != nil {
+		log.Error(err, "Error accessing CA ClusterIssuer, requeueing")
+
 		return reconcile.Result{}, err
 	}
-
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
@@ -233,11 +236,10 @@ func newCert(name, ns, secret, issuerName, issuerKind string) *certmgr.Certifica
 	}
 }
 
-func newClusterIssuer(name, ns, secret string) *certmgr.ClusterIssuer {
+func newClusterIssuer(name, secret string) *certmgr.ClusterIssuer {
 	return &certmgr.ClusterIssuer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
+			Name: name,
 		},
 		Spec: certmgr.IssuerSpec{
 			IssuerConfig: certmgr.IssuerConfig{
