@@ -28,10 +28,21 @@ type CertManagerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	ImageRegistry string `json:"imageRegistry,omitempty"`
-	ImagePostFix  string `json:"imagePostFix,omitempty"`
-	Webhook       bool   `json:"enableWebhook,omitempty"`
-	ResourceNS    string `json:"resourceNamespace,omitempty"`
+	ImageRegistry string       `json:"imageRegistry,omitempty"`
+	ImagePostFix  string       `json:"imagePostFix,omitempty"`
+	Webhook       bool         `json:"enableWebhook,omitempty"`
+	ResourceNS    string       `json:"resourceNamespace,omitempty"`
+	SharedCA      SharedCASpec `json:"sharedCA,omitempty"`
+}
+
+// SharedCASpec defines the desired state of creating a shared cert-manager CA clusterissuer
+type SharedCASpec struct {
+	Enabled bool  `json:"enabled,omitempty"`
+	BYO     ByoCA `json:"byo,omitempty"`
+}
+
+type ByoCA struct {
+	SecretName string `json:"secretName"`
 }
 
 // CertManagerStatus defines the observed state of CertManager

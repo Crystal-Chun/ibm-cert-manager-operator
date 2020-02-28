@@ -252,6 +252,13 @@ func (r *ReconcileCertManager) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	r.updateStatus(instance, "Deployed cert-manager successfully", corev1.EventTypeNormal, "Deployed")
 
+	// Check if we're deploying the sharedCA
+	if instance.Spec.SharedCA.Enabled {
+
+	} else {
+
+	}
+
 	return reconcile.Result{}, nil
 }
 
