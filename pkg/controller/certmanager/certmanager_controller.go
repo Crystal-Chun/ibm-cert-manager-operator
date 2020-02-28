@@ -252,13 +252,10 @@ func (r *ReconcileCertManager) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	r.updateStatus(instance, "Deployed cert-manager successfully", corev1.EventTypeNormal, "Deployed")
 
-	// Check if we're deploying the sharedCA
-	if instance.Spec.SharedCA.Enabled {
+	r.updateStatus(instance, "Can't set controller reference on self signed issuer", corev1.EventTypeWarning, "Error")
+	r.updateStatus(instance, "Error creating self signed Issuer", corev1.EventTypeWarning, "Error")
 
-	} else {
-
-	}
-
+	r.updateStatus(instance, "Successfully created self signed issuer, CA certificate, and CA clusterissuer", corev1.EventTypeNormal, "Success")
 	return reconcile.Result{}, nil
 }
 
@@ -315,6 +312,15 @@ func (r *ReconcileCertManager) deployments(instance *operatorv1alpha1.CertManage
 	return nil
 }
 
+func (r *ReconcileCertManager) SharedCA(instance *operatorv1alpha1.CertManager) error {
+	// Check if we're deploying the sharedCA
+	if instance.Spec.SharedCA.Enabled {
+
+	} else { // We're not deploying the sharedCA, remove any resources if there are any
+
+	}
+	return nil
+}
 func (r *ReconcileCertManager) updateStatus(instance *operatorv1alpha1.CertManager, message, event, reason string) {
 	r.recorder.Event(instance, event, reason, message)
 }

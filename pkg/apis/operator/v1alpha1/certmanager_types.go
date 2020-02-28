@@ -41,8 +41,10 @@ type SharedCASpec struct {
 	BYO     ByoCA `json:"byo,omitempty"`
 }
 
+// ByoCA defines whether or not a client wants to bring their own CA
 type ByoCA struct {
-	SecretName string `json:"secretName"`
+	Enabled    bool   `json:"enabled,omitempty"`
+	SecretName string `json:"secretName,omitempty"`
 }
 
 // CertManagerStatus defines the observed state of CertManager

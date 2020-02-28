@@ -43,6 +43,22 @@ spec:
               type: string
             resourceNamespace:
               type: string
+            sharedCA:
+              description: SharedCASpec defines the desired state of creating a shared
+                cert-manager CA clusterissuer
+              properties:
+                byo:
+                  description: ByoCA defines whether or not a client wants to bring
+                    their own CA
+                  properties:
+                    enabled:
+                      type: boolean
+                    secretName:
+                      type: string
+                  type: object
+                enabled:
+                  type: boolean
+              type: object
           type: object
         status:
           description: CertManagerStatus defines the observed state of CertManager

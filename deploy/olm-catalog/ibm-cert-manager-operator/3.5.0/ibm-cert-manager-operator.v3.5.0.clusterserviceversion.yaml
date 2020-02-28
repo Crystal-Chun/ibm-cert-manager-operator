@@ -83,6 +83,21 @@ spec:
         path: resourceNamespace
         x-descriptors:
         - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Whether or not shared CA is enabled
+        displayName: EnableSharedCA
+        path: sharedCA.enabled
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: Whether or not a byo CA is enabled
+        displayName: EnableBYOSharedCA
+        path: sharedCA.byo.enabled
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
+      - description: The secret name storing your Byo CA to use for the shared CA clusterissuer
+        displayName: BYOCASecretName
+        path: sharedCA.byo.secretName
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:text'
       statusDescriptors:
       - description: The status of deploying cert-manager
         displayName: Status
