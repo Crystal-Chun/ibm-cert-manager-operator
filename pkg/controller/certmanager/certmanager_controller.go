@@ -18,10 +18,12 @@ package certmanager
 
 import (
 	"context"
+	"fmt"
 
 	operatorv1alpha1 "github.com/ibm/ibm-cert-manager-operator/pkg/apis/operator/v1alpha1"
 	res "github.com/ibm/ibm-cert-manager-operator/pkg/resources"
 
+	certmgr "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	admRegv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -163,6 +165,31 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
+
+	err = c.Watch(&source.Kind{Type: &certmgr.Certificate{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &operatorv1alpha1.CertManager{},
+	})
+	if err != nil {
+		return err
+	}
+	// Watch for changes to secondary resource Pods and requeue the owner CertManager
+	err = c.Watch(&source.Kind{Type: &certmgr.Issuer{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &operatorv1alpha1.CertManager{},
+	})
+	if err != nil {
+		return err
+	}
+	// Watch for changes to secondary resource Pods and requeue the owner CertManager
+	err = c.Watch(&source.Kind{Type: &certmgr.ClusterIssuer{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &operatorv1alpha1.CertManager{},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -252,10 +279,13 @@ func (r *ReconcileCertManager) Reconcile(request reconcile.Request) (reconcile.R
 	}
 	r.updateStatus(instance, "Deployed cert-manager successfully", corev1.EventTypeNormal, "Deployed")
 
-	r.updateStatus(instance, "Can't set controller reference on self signed issuer", corev1.EventTypeWarning, "Error")
-	r.updateStatus(instance, "Error creating self signed Issuer", corev1.EventTypeWarning, "Error")
+	if err := r.SharedCA(instance); err != nil {
+		msg := fmt.Sprintf("Error creating shared CA for common services: %s", err.Error())
+		log.Error(err, "Error creating shared CA")
+		r.updateStatus(instance, msg, corev1.EventTypeWarning, "SharedCAFailed")
+	}
 
-	r.updateStatus(instance, "Successfully created self signed issuer, CA certificate, and CA clusterissuer", corev1.EventTypeNormal, "Success")
+	r.updateStatus(instance, "Successfully created self signed issuer, CA certificate, and CA clusterissuer", corev1.EventTypeNormal, "SharedCASuccess")
 	return reconcile.Result{}, nil
 }
 
@@ -312,15 +342,33 @@ func (r *ReconcileCertManager) deployments(instance *operatorv1alpha1.CertManage
 	return nil
 }
 
+// SharedCA contains the logic to deploy a shared CA resource amongst the common services
 func (r *ReconcileCertManager) SharedCA(instance *operatorv1alpha1.CertManager) error {
+	ns := r.ns
+	if instance.Spec.ResourceNS != "" {
+		ns = instance.Spec.ResourceNS
+	}
 	// Check if we're deploying the sharedCA
 	if instance.Spec.SharedCA.Enabled {
-
+		if instance.Spec.SharedCA.BYO.Enabled {
+			// BYO enabled
+			if err := byoCA(instance, r.client, r.scheme, ns); err != nil {
+				return err
+			}
+		} else {
+			// BYO not enabled, deploy default Shared CA
+			if err := deployDefaultCA(instance, r.client, r.scheme, ns); err != nil {
+				return err
+			}
+		}
 	} else { // We're not deploying the sharedCA, remove any resources if there are any
-
+		if err := removeSharedCA(r.client, ns); err != nil {
+			return err
+		}
 	}
 	return nil
 }
+
 func (r *ReconcileCertManager) updateStatus(instance *operatorv1alpha1.CertManager, message, event, reason string) {
 	r.recorder.Event(instance, event, reason, message)
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/ibm/ibm-cert-manager-operator/pkg/controller"
 	"github.com/ibm/ibm-cert-manager-operator/version"
 
+	certmgr "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -127,7 +128,11 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-
+	// Setup Scheme for all resources
+	if err := certmgr.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
 	// Setup Scheme for all resources
 	if err := apiextensionv1beta1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")

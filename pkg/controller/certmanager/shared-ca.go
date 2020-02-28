@@ -22,6 +22,7 @@ import (
 	operatorv1alpha1 "github.com/ibm/ibm-cert-manager-operator/pkg/apis/operator/v1alpha1"
 
 	certmgr "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,22 +32,20 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// Reconcile reads that state of the cluster for a CertManagerSharedCA object and makes changes based on the state read
-// and what is in the CertManagerSharedCA.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+const caClusterIssuerName = "cs-ca-clusterissuer"
+const ssIssuerName = "cs-ss-issuer"
+const caCertName = "cs-ca-certificate"
+const caSecretName = "cs-ca-certificate-secret"
+
 func deployDefaultCA(instance *operatorv1alpha1.CertManager, client client.Client, scheme *runtime.Scheme, ns string) error {
 	log := logf.Log.WithName("shared-ca")
-	var ssIssuerName = "cs-ss-issuer"
+
 	ssIssuer := &certmgr.Issuer{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: ssIssuerName, Namespace: ns}, ssIssuer)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating a new self signed Issuer", "Name", ssIssuerName, "Namespace", ns)
 		ssIssuer := newIssuer(ssIssuerName, ns)
-		// Set CertManagerSharedCA instance as the owner and controller
+		// Set CertManager instance as the owner and controller
 		if err := controllerutil.SetControllerReference(instance, ssIssuer, scheme); err != nil {
 			return err
 		}
@@ -59,15 +58,13 @@ func deployDefaultCA(instance *operatorv1alpha1.CertManager, client client.Clien
 		log.Error(err, "Error accessing self signed issuer, requeueing")
 		return err
 	}
-	var caCertName = "cs-ca-certificate"
-	var caSecretName = "cs-ca-certificate-secret"
 
 	caCert := &certmgr.Certificate{}
 	err = client.Get(context.TODO(), types.NamespacedName{Name: caCertName, Namespace: ns}, caCert)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating a new CA Certificate", "Name", caCertName, "Namespace", ns)
 		caCertificate := newCert(caCertName, ns, caSecretName, ssIssuerName, "Issuer")
-		// Set CertManagerSharedCA instance as the owner and controller
+		// Set CertManager instance as the owner and controller
 		if err := controllerutil.SetControllerReference(instance, caCertificate, scheme); err != nil {
 			return err
 		}
@@ -81,15 +78,13 @@ func deployDefaultCA(instance *operatorv1alpha1.CertManager, client client.Clien
 		return err
 	}
 
-	var caClusterIssuerName = "cs-ca-issuer"
-
 	// Check if this ClusterIssuer already exists
-	found := &certmgr.ClusterIssuer{}
-	err = client.Get(context.TODO(), types.NamespacedName{Name: caClusterIssuerName, Namespace: ""}, found)
+	clusterIssuerFound := &certmgr.ClusterIssuer{}
+	err = client.Get(context.TODO(), types.NamespacedName{Name: caClusterIssuerName, Namespace: ""}, clusterIssuerFound)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info("Creating a new ClusterIssuer", "Pod.Namespace", caClusterIssuerName)
 		clusterIssuer := newClusterIssuer(caClusterIssuerName, caSecretName)
-		// Set CertManagerSharedCA instance as the owner and controller
+		// Set CertManager instance as the owner and controller
 		if err := controllerutil.SetControllerReference(instance, clusterIssuer, scheme); err != nil {
 			return err
 		}
@@ -106,7 +101,150 @@ func deployDefaultCA(instance *operatorv1alpha1.CertManager, client client.Clien
 }
 
 func byoCA(instance *operatorv1alpha1.CertManager, client client.Client, scheme *runtime.Scheme, ns string) error {
+	if err := removeForBYO(client, ns); err != nil {
+		return err
+	}
+	// Check if the ClusterIssuer already exists
+	clusterIssuerFound := &certmgr.ClusterIssuer{}
+	err := client.Get(context.TODO(), types.NamespacedName{Name: caClusterIssuerName, Namespace: ""}, clusterIssuerFound)
+	if err != nil && errors.IsNotFound(err) {
+		log.Info("Creating a new ClusterIssuer", "Pod.Namespace", caClusterIssuerName)
+		clusterIssuer := newClusterIssuer(caClusterIssuerName, caSecretName)
+		// Set CertManager instance as the owner and controller
+		if err := controllerutil.SetControllerReference(instance, clusterIssuer, scheme); err != nil {
+			return err
+		}
+		err = client.Create(context.TODO(), clusterIssuer)
+		if err != nil {
+			log.Error(err, "Error creating CA ClusterIssuer, requeueing")
+			return err
+		}
+	} else if err != nil {
+		if errors.IsAlreadyExists(err) {
+			// The ClusterIssuer exists, check if we should update the secret name
+			if instance.Spec.SharedCA.BYO.SecretName != "" {
+				if instance.Spec.SharedCA.BYO.SecretName != clusterIssuerFound.Spec.CA.SecretName {
+					clusterIssuer := newClusterIssuer(caClusterIssuerName, instance.Spec.SharedCA.BYO.SecretName)
+					// Set CertManager instance as the owner and controller
+					if err := controllerutil.SetControllerReference(instance, clusterIssuer, scheme); err != nil {
+						return err
+					}
+					err = client.Update(context.TODO(), clusterIssuer)
+					if err != nil {
+						log.Error(err, "Error updating CA ClusterIssuer, requeueing")
+						return err
+					}
+				}
+			} else if caSecretName != clusterIssuerFound.Spec.CA.SecretName {
+				clusterIssuer := newClusterIssuer(caClusterIssuerName, caSecretName)
+				// Set CertManager instance as the owner and controller
+				if err := controllerutil.SetControllerReference(instance, clusterIssuer, scheme); err != nil {
+					return err
+				}
+				err = client.Update(context.TODO(), clusterIssuer)
+				if err != nil {
+					log.Error(err, "Error updating CA ClusterIssuer, requeueing")
+					return err
+				}
+			}
+		} else {
+			log.Error(err, "Error accessing CA ClusterIssuer, requeueing")
+			return err
+		}
 
+	}
+	return nil
+}
+
+func removeBYO(client client.Client) error {
+	if err := removeClusterIssuer(client); err != nil {
+		return err
+	}
+	return nil
+}
+
+func removeForBYO(client client.Client, ns string) error {
+	if err := removeCert(client, ns); err != nil {
+		return err
+	}
+	if err := removeSecret(client, ns); err != nil {
+		return err
+	}
+	if err := removeIssuer(client, ns); err != nil {
+		return err
+	}
+	return nil
+}
+
+func removeSharedCA(client client.Client, ns string) error {
+	if err := removeClusterIssuer(client); err != nil {
+		return err
+	}
+	if err := removeCert(client, ns); err != nil {
+		return err
+	}
+	if err := removeSecret(client, ns); err != nil {
+		return err
+	}
+	if err := removeIssuer(client, ns); err != nil {
+		return err
+	}
+	return nil
+}
+
+func removeIssuer(client client.Client, ns string) error {
+	ssIssuer := &certmgr.Issuer{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: ssIssuerName, Namespace: ns}, ssIssuer); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	} else {
+		if err = client.Delete(context.TODO(), ssIssuer); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func removeClusterIssuer(client client.Client) error {
+	clusterIssuer := &certmgr.ClusterIssuer{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: caClusterIssuerName, Namespace: ""}, clusterIssuer); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	} else {
+		if err = client.Delete(context.TODO(), clusterIssuer); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func removeCert(client client.Client, ns string) error {
+	cert := &certmgr.Certificate{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: caCertName, Namespace: ns}, cert); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	} else {
+		if err = client.Delete(context.TODO(), cert); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func removeSecret(client client.Client, ns string) error {
+	secret := &corev1.Secret{}
+	if err := client.Get(context.TODO(), types.NamespacedName{Name: caSecretName, Namespace: ns}, secret); err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	} else {
+		if err = client.Delete(context.TODO(), secret); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
