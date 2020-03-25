@@ -254,3 +254,25 @@ rules:
   - subjectaccessreviews
   verbs:
   - '*'
+- apiGroups:
+  - acme.cert-manager.io
+  resources:
+  - certificaterequests
+  - certificates
+  - issuers
+  - clusterissuers
+  - orders
+  - challenges
+  verbs:
+  - '*'
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificaterequests
+  - certificates
+  - issuers
+  - clusterissuers
+  - orders
+  - challenges
+  verbs:
+  - '*'

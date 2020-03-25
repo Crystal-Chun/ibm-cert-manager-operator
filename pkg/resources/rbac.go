@@ -113,6 +113,32 @@ var DefaultClusterRole = &rbacv1.ClusterRole{
 			APIGroups: []string{"authorization.k8s.io"},
 			Resources: []string{"subjectaccessreviews"},
 		},
+		{
+			Verbs:     []string{"*"},
+			APIGroups: []string{"cert-manager.io"},
+			Resources: []string{"certificaterequests", "certificates", "issuers", "clusterissuers", "orders", "challenges"},
+		},
+		{
+			Verbs:     []string{"*"},
+			APIGroups: []string{"acme.cert-manager.io"},
+			Resources: []string{"certificaterequests", "certificates", "issuers", "clusterissuers", "orders", "challenges"},
+		},
+		{
+			Verbs:     []string{"update"},
+			APIGroups: []string{"cert-manager.io"},
+			Resources: []string{
+				"certificates/status",
+				"certificaterequests/status",
+				"challenges/status",
+				"clusterissuers/status",
+				"issuers/status",
+				"orders/status",
+				"certificates/finalizers",
+				"challenges/finalizers",
+				"ingresses/finalizers",
+				"orders/finalizers",
+			},
+		},
 	},
 }
 
